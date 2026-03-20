@@ -565,7 +565,7 @@ return h("div", null,
         h("h3", { style: { margin:"0 0 12px", fontSize:"1rem", color:"#5c4a32" } }, "📝 メモ"),
         h("textarea", { style: S.memo, placeholder: "今月の振り返りやメモをここに...", value: mD.memo || "", onChange: function(ev) { upd(function(p) { return Object.assign({}, p, { memo: ev.target.value }); }); } })
       )
-    ) 
+    )
   ),
 
   h("footer", { style: { position:"relative", zIndex:1, textAlign:"center", padding:"24px 20px" } },
