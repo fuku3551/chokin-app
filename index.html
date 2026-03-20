@@ -5,299 +5,579 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>家計ノート</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif;background:linear-gradient(180deg,#faf8f5 0%,#f0ebe4 50%,#e8e0d5 100%);color:#3d3228;min-height:100vh}
-#root{max-width:480px;margin:0 auto;padding-bottom:40px;position:relative}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif; background:linear-gradient(180deg,#faf8f5,#f0ebe4,#e8e0d5); color:#3d3228; min-height:100vh; }
+#root { max-width:480px; margin:0 auto; padding-bottom:40px; position:relative; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script>
-const e=React.createElement,{useState,useEffect,useCallback,useMemo,Fragment}=React;
+(function() {
+  "use strict";
+  var h = React.createElement;
+  var useState = React.useState;
+  var useEffect = React.useEffect;
+  var useCallback = React.useCallback;
+  var useMemo = React.useMemo;
+  var Fragment = React.Fragment;
 
-const DEFAULTS={
-income:{title:”\u2460 \u53ce\u5165”,icon:”\ud83d\udcb0”,max:8,preset:[”\u672c\u696d”,”\u526f\u696d”,”\u4e8b\u696d\u53ce\u5165”,”\u305d\u306e\u4ed6”]},
-deductions:{title:”\u2461 \u5f15\u304d\u843d\u3068\u3057\u9805\u76ee”,icon:”\ud83c\udfe6”,max:15,preset:[”\u5bb6\u8cc3”,”\u96fb\u6c17\u4ee3”,”\u30ac\u30b9\u4ee3”,”\u6c34\u9053\u4ee3”,”\u901a\u4fe1\u8cbb”,”\u4fdd\u967a\u6599”,”\u30ed\u30fc\u30f3”,”\u30b5\u30d6\u30b9\u30af”,”\u7a0e\u91d1”,”\u305d\u306e\u4ed6”]},
-transfers:{title:”\u2462 \u632f\u8fbc\u9805\u76ee”,icon:”\ud83d\udce4”,max:10,preset:[”\u632f\u8fbc\u5148A”,”\u632f\u8fbc\u5148B”,”\u632f\u8fbc\u5148C”,”\u632f\u8fbc\u5148D”,”\u632f\u8fbc\u5148E”,”\u632f\u8fbc\u5148F”]},
-living:{title:”\u2463 \u751f\u6d3b\u8cbb\u9805\u76ee”,icon:”\ud83d\uded2”,max:12,preset:[”\u98df\u8cbb”,”\u65e5\u7528\u54c1”,”\u4ea4\u901a\u8cbb”,”\u533b\u7642\u8cbb”,”\u8863\u670d\u8cbb”,”\u4ea4\u969b\u8cbb”,”\u8da3\u5473”,”\u96d1\u8cbb”]},
-specialSavings:{title:”\u2464 \u7279\u5225\u5fc5\u9808\u8caf\u91d1”,icon:”\ud83d\udd12”,max:8,preset:[”\u8eca\u691c\u7a4d\u7acb”,”\u51a0\u5a5a\u846c\u796d”,”\u65c5\u884c\u7a4d\u7acb”,”\u7dca\u6025\u4e88\u5099\u8cbb”]}
+// ===== DEFAULTS =====
+var DEFAULTS = {
+income: { title: “① 収入”, icon: “💰”, max: 8, preset: [“本業”,“副業”,“事業収入”,“その他”] },
+deductions: { title: “② 引き落とし項目”, icon: “🏦”, max: 15, preset: [“家賃”,“電気代”,“ガス代”,“水道代”,“通信費”,“保険料”,“ローン”,“サブスク”,“税金”,“その他”] },
+transfers: { title: “③ 振込項目”, icon: “📤”, max: 10, preset: [“振込先A”,“振込先B”,“振込先C”,“振込先D”,“振込先E”,“振込先F”] },
+living: { title: “④ 生活費項目”, icon: “🛒”, max: 12, preset: [“食費”,“日用品”,“交通費”,“医療費”,“衣服費”,“交際費”,“趣味”,“雑費”] },
+specialSavings: { title: “⑤ 特別必須貯金”, icon: “🔒”, max: 8, preset: [“車検積立”,“冠婚葬祭”,“旅行積立”,“緊急予備費”] }
 };
 
-const mkItem=(name,sk)=>{const o={name:name||””,amount:””};if(sk!==“income”)o.checked=false;return o};
-const mkDefSec=()=>{const s={};Object.entries(DEFAULTS).forEach(([sk,d])=>{s[sk]={title:d.title,icon:d.icon,items:d.preset.map(n=>mkItem(n,sk))}});return s};
-const fresh=()=>({sections:mkDefSec(),savingsAmount:””,savingsChecked:false,savingsTitle:”\u2465 \u8caf\u91d1”,memo:””});
-const mk=(y,m)=>y+”-”+String(m).padStart(2,“0”);
-const fmt=n=>”\u00a5”+(Number(n)||0).toLocaleString();
-const fmtS=n=>{const v=Number(n)||0;if(v===0)return”-”;if(Math.abs(v)>=10000)return(v/10000).toFixed(v%10000===0?0:1)+”\u4e07”;return v.toLocaleString()};
-const pa=v=>{const n=parseInt(String(v||””).replace(/[^0-9]/g,””),10);return isNaN(n)?0:n};
+function mkItem(name, sk) {
+var o = { name: name || “”, amount: “” };
+if (sk !== “income”) { o.checked = false; }
+return o;
+}
 
-const SKEY=“kakeibo-v3”;
-const ld=()=>{try{const d=localStorage.getItem(SKEY);return d?JSON.parse(d):null}catch(e){return null}};
-const sv=d=>{try{localStorage.setItem(SKEY,JSON.stringify(d))}catch(e){}};
+function mkDefSec() {
+var s = {};
+var keys = Object.keys(DEFAULTS);
+for (var i = 0; i < keys.length; i++) {
+var sk = keys[i];
+var d = DEFAULTS[sk];
+s[sk] = { title: d.title, icon: d.icon, items: d.preset.map(function(n) { return mkItem(n, sk); }) };
+}
+return s;
+}
 
-const ensure=(d)=>{
-if(!d||typeof d!==“object”||!d.sections)return fresh();
-try{
-const m={sections:{},savingsAmount:String(d.savingsAmount||””),savingsChecked:Boolean(d.savingsChecked),savingsTitle:String(d.savingsTitle||”\u2465 \u8caf\u91d1”),memo:String(d.memo||””)};
-Object.keys(DEFAULTS).forEach(sk=>{
-const src=d.sections&&d.sections[sk];
-if(!src||!Array.isArray(src.items)){m.sections[sk]={title:DEFAULTS[sk].title,icon:DEFAULTS[sk].icon,items:DEFAULTS[sk].preset.map(n=>mkItem(n,sk))}}
-else{m.sections[sk]={title:String(src.title||DEFAULTS[sk].title),icon:DEFAULTS[sk].icon,items:src.items.map(it=>{const o={name:String(it.name||””),amount:String(it.amount||””)};if(sk!==“income”)o.checked=Boolean(it.checked);return o})}}
-});
+function freshMonth() {
+return { sections: mkDefSec(), savingsAmount: “”, savingsChecked: false, savingsTitle: “⑥ 貯金”, memo: “” };
+}
+
+function monthKey(y, m) { return y + “-” + String(m).padStart(2, “0”); }
+function fmt(n) { return “¥” + (Number(n) || 0).toLocaleString(); }
+function fmtS(n) {
+var v = Number(n) || 0;
+if (v === 0) return “-”;
+if (Math.abs(v) >= 10000) return (v / 10000).toFixed(v % 10000 === 0 ? 0 : 1) + “万”;
+return v.toLocaleString();
+}
+function pa(v) {
+var n = parseInt(String(v || “”).replace(/[^0-9]/g, “”), 10);
+return isNaN(n) ? 0 : n;
+}
+
+// ===== STORAGE =====
+var SKEY = “kakeibo-v3”;
+function loadAll() {
+try { var d = localStorage.getItem(SKEY); return d ? JSON.parse(d) : null; }
+catch(e) { return null; }
+}
+function saveAll(d) {
+try { localStorage.setItem(SKEY, JSON.stringify(d)); } catch(e) {}
+}
+
+function ensure(d) {
+if (!d || typeof d !== “object” || !d.sections) return freshMonth();
+try {
+var m = {
+sections: {},
+savingsAmount: String(d.savingsAmount || “”),
+savingsChecked: Boolean(d.savingsChecked),
+savingsTitle: String(d.savingsTitle || “⑥ 貯金”),
+memo: String(d.memo || “”)
+};
+var keys = Object.keys(DEFAULTS);
+for (var i = 0; i < keys.length; i++) {
+var sk = keys[i];
+var src = d.sections[sk];
+if (!src || !Array.isArray(src.items)) {
+m.sections[sk] = { title: DEFAULTS[sk].title, icon: DEFAULTS[sk].icon, items: DEFAULTS[sk].preset.map(function(n) { return mkItem(n, sk); }) };
+} else {
+m.sections[sk] = {
+title: String(src.title || DEFAULTS[sk].title),
+icon: DEFAULTS[sk].icon,
+items: src.items.map(function(it) {
+var o = { name: String(it.name || “”), amount: String(it.amount || “”) };
+if (sk !== “income”) { o.checked = Boolean(it.checked); }
+return o;
+})
+};
+}
+}
 return m;
-}catch(e){return fresh()}
+} catch(e) { return freshMonth(); }
+}
+
+// ===== STYLES =====
+var S = {
+bg: { position:“fixed”, top:0, left:0, right:0, bottom:0, backgroundImage:“radial-gradient(circle at 20% 50%,rgba(139,117,85,0.04) 0%,transparent 50%),radial-gradient(circle at 80% 20%,rgba(45,106,79,0.04) 0%,transparent 50%)”, pointerEvents:“none”, zIndex:0 },
+hdr: { position:“relative”, zIndex:1, textAlign:“center”, padding:“32px 20px 12px”, background:“linear-gradient(180deg,rgba(139,117,85,0.08) 0%,transparent 100%)” },
+tabs: { position:“relative”, zIndex:1, display:“flex”, margin:“8px 16px 12px”, borderRadius:10, overflow:“hidden”, border:“1px solid rgba(139,117,85,0.15)”, background:“rgba(255,255,255,0.5)” },
+tabOn: { flex:1, padding:“10px 0”, border:“none”, background:“rgba(92,74,50,0.12)”, color:”#5c4a32”, fontWeight:700, fontSize:“0.85rem”, cursor:“pointer”, fontFamily:“inherit” },
+tabOff: { flex:1, padding:“10px 0”, border:“none”, background:“transparent”, color:”#9b8b78”, fontWeight:500, fontSize:“0.85rem”, cursor:“pointer”, fontFamily:“inherit” },
+mNav: { position:“relative”, zIndex:1, display:“flex”, alignItems:“center”, justifyContent:“center”, gap:20, padding:“8px 20px” },
+nBtn: { background:“rgba(139,117,85,0.1)”, border:“1px solid rgba(139,117,85,0.2)”, borderRadius:8, width:40, height:40, fontSize:“1rem”, color:”#5c4a32”, cursor:“pointer”, display:“flex”, alignItems:“center”, justifyContent:“center” },
+actBar: { position:“relative”, zIndex:1, display:“flex”, justifyContent:“center”, gap:10, padding:“0 20px 12px” },
+actBtn: { background:“rgba(45,106,79,0.1)”, border:“1px solid rgba(45,106,79,0.2)”, borderRadius:8, padding:“8px 16px”, fontSize:“0.8rem”, color:”#2d6a4f”, cursor:“pointer”, fontWeight:600, fontFamily:“inherit” },
+rstBtn: { background:“rgba(139,117,85,0.1)”, border:“1px solid rgba(139,117,85,0.2)”, borderRadius:8, padding:“8px 16px”, fontSize:“0.8rem”, color:”#8b7555”, cursor:“pointer”, fontWeight:600, fontFamily:“inherit” },
+histPanel: { position:“relative”, zIndex:1, margin:“0 16px 16px”, background:“rgba(255,255,255,0.7)”, backdropFilter:“blur(8px)”, borderRadius:16, padding:20, border:“1px solid rgba(139,117,85,0.15)” },
+main: { position:“relative”, zIndex:1, padding:“0 16px”, display:“flex”, flexDirection:“column”, gap:16 },
+card: { background:“rgba(255,255,255,0.65)”, backdropFilter:“blur(8px)”, borderRadius:16, padding:20, border:“1px solid rgba(139,117,85,0.12)”, boxShadow:“0 2px 12px rgba(92,74,50,0.04)” },
+secHead: { display:“flex”, alignItems:“center”, gap:8, marginBottom:16, paddingBottom:10, borderBottom:“1px solid rgba(139,117,85,0.1)” },
+titleIn: { fontSize:“0.95rem”, fontWeight:700, color:”#5c4a32”, letterSpacing:“0.05em”, border:“none”, borderBottom:“1px dashed rgba(139,117,85,0.2)”, background:“transparent”, outline:“none”, fontFamily:“inherit”, padding:“2px 4px”, flex:1, minWidth:0 },
+nameIn: { flex:1, fontSize:“0.82rem”, color:”#5c4a32”, border:“1px solid rgba(139,117,85,0.18)”, borderRadius:6, padding:“5px 8px”, background:“rgba(255,255,255,0.7)”, outline:“none”, fontFamily:“inherit”, minWidth:0 },
+amtW: { display:“flex”, alignItems:“center”, gap:2, background:“rgba(139,117,85,0.06)”, borderRadius:8, padding:“4px 6px”, border:“1px solid rgba(139,117,85,0.1)”, width:85, minWidth:85, flexShrink:0 },
+yen: { fontSize:“0.85rem”, color:”#9b8b78”, fontWeight:600 },
+amtIn: { width:“100%”, border:“none”, background:“transparent”, fontSize:“0.95rem”, color:”#3d3228”, fontFamily:”‘Noto Sans JP’,sans-serif”, fontWeight:600, outline:“none”, textAlign:“right”, padding:“2px 0” },
+secFoot: { marginTop:14, paddingTop:12, borderTop:“1px dashed rgba(139,117,85,0.2)”, display:“flex”, flexDirection:“column”, gap:6 },
+totRow: { display:“flex”, justifyContent:“space-between”, alignItems:“center” },
+balRow: { display:“flex”, justifyContent:“space-between”, alignItems:“center”, padding:“6px 10px”, background:“rgba(45,106,79,0.06)”, borderRadius:8 },
+memo: { width:“100%”, minHeight:80, border:“1px solid rgba(139,117,85,0.15)”, borderRadius:10, padding:12, fontSize:“0.85rem”, fontFamily:”‘Noto Sans JP’,sans-serif”, color:”#3d3228”, background:“rgba(255,255,255,0.5)”, resize:“vertical”, outline:“none”, boxSizing:“border-box” }
 };
 
-/* ═══ Styles ═══ */
-const S={
-bg:{position:“fixed”,top:0,left:0,right:0,bottom:0,backgroundImage:“radial-gradient(circle at 20% 50%,rgba(139,117,85,0.04) 0%,transparent 50%),radial-gradient(circle at 80% 20%,rgba(45,106,79,0.04) 0%,transparent 50%)”,pointerEvents:“none”,zIndex:0},
-hdr:{position:“relative”,zIndex:1,textAlign:“center”,padding:“32px 20px 12px”,background:“linear-gradient(180deg,rgba(139,117,85,0.08) 0%,transparent 100%)”},
-tabs:{position:“relative”,zIndex:1,display:“flex”,margin:“8px 16px 12px”,borderRadius:10,overflow:“hidden”,border:“1px solid rgba(139,117,85,0.15)”,background:“rgba(255,255,255,0.5)”},
-tabOn:{flex:1,padding:“10px 0”,border:“none”,background:“rgba(92,74,50,0.12)”,color:”#5c4a32”,fontWeight:700,fontSize:“0.85rem”,cursor:“pointer”,fontFamily:“inherit”},
-tabOff:{flex:1,padding:“10px 0”,border:“none”,background:“transparent”,color:”#9b8b78”,fontWeight:500,fontSize:“0.85rem”,cursor:“pointer”,fontFamily:“inherit”},
-mNav:{position:“relative”,zIndex:1,display:“flex”,alignItems:“center”,justifyContent:“center”,gap:20,padding:“8px 20px”},
-nBtn:{background:“rgba(139,117,85,0.1)”,border:“1px solid rgba(139,117,85,0.2)”,borderRadius:8,width:40,height:40,fontSize:“1rem”,color:”#5c4a32”,cursor:“pointer”,display:“flex”,alignItems:“center”,justifyContent:“center”},
-actBar:{position:“relative”,zIndex:1,display:“flex”,justifyContent:“center”,gap:10,padding:“0 20px 12px”},
-actBtn:{background:“rgba(45,106,79,0.1)”,border:“1px solid rgba(45,106,79,0.2)”,borderRadius:8,padding:“8px 16px”,fontSize:“0.8rem”,color:”#2d6a4f”,cursor:“pointer”,fontWeight:600,fontFamily:“inherit”},
-histPanel:{position:“relative”,zIndex:1,margin:“0 16px 16px”,background:“rgba(255,255,255,0.7)”,backdropFilter:“blur(8px)”,borderRadius:16,padding:20,border:“1px solid rgba(139,117,85,0.15)”},
-main:{position:“relative”,zIndex:1,padding:“0 16px”,display:“flex”,flexDirection:“column”,gap:16},
-card:{background:“rgba(255,255,255,0.65)”,backdropFilter:“blur(8px)”,borderRadius:16,padding:20,border:“1px solid rgba(139,117,85,0.12)”,boxShadow:“0 2px 12px rgba(92,74,50,0.04)”},
-secHead:{display:“flex”,alignItems:“center”,gap:8,marginBottom:16,paddingBottom:10,borderBottom:“1px solid rgba(139,117,85,0.1)”},
-nameIn:{flex:1,fontSize:“0.82rem”,color:”#5c4a32”,border:“1px solid rgba(139,117,85,0.18)”,borderRadius:6,padding:“5px 8px”,background:“rgba(255,255,255,0.7)”,outline:“none”,fontFamily:“inherit”,minWidth:0},
-amtW:{display:“flex”,alignItems:“center”,gap:2,background:“rgba(139,117,85,0.06)”,borderRadius:8,padding:“4px 6px”,border:“1px solid rgba(139,117,85,0.1)”,width:85,minWidth:85,flexShrink:0},
-yen:{fontSize:“0.85rem”,color:”#9b8b78”,fontWeight:600},
-amtIn:{width:“100%”,border:“none”,background:“transparent”,fontSize:“0.95rem”,color:”#3d3228”,fontFamily:”‘Noto Sans JP’,sans-serif”,fontWeight:600,outline:“none”,textAlign:“right”,padding:“2px 0”},
-secFoot:{marginTop:14,paddingTop:12,borderTop:“1px dashed rgba(139,117,85,0.2)”,display:“flex”,flexDirection:“column”,gap:6},
-totRow:{display:“flex”,justifyContent:“space-between”,alignItems:“center”},
-balRow:{display:“flex”,justifyContent:“space-between”,alignItems:“center”,padding:“6px 10px”,background:“rgba(45,106,79,0.06)”,borderRadius:8},
-memo:{width:“100%”,minHeight:80,border:“1px solid rgba(139,117,85,0.15)”,borderRadius:10,padding:12,fontSize:“0.85rem”,fontFamily:”‘Noto Sans JP’,sans-serif”,color:”#3d3228”,background:“rgba(255,255,255,0.5)”,resize:“vertical”,outline:“none”,boxSizing:“border-box”},
-titleIn:{fontSize:“0.95rem”,fontWeight:700,color:”#5c4a32”,letterSpacing:“0.05em”,border:“none”,borderBottom:“1px dashed rgba(139,117,85,0.2)”,background:“transparent”,outline:“none”,fontFamily:“inherit”,padding:“2px 4px”,flex:1,minWidth:0}
-};
+// ===== ANNUAL VIEW =====
+function AnnualView(props) {
+var allData = props.allData, yr = props.yr, setYr = props.setYr, cumSav = props.cumSav;
+var ms = [1,2,3,4,5,6,7,8,9,10,11,12];
 
-/* ═══ Annual View ═══ */
-function AnnualView({allData,yr,setYr,cumSav}){
-const ms=Array.from({length:12},(_,i)=>i+1);
-const gm=m=>{const d=allData[mk(yr,m)];return d?ensure(d):null};
-const st=(d,k)=>(d&&d.sections&&d.sections[k]&&d.sections[k].items||[]).reduce((s,it)=>s+pa(it.amount),0);
-const incNames=useMemo(()=>{
-const ns=new Set();ms.forEach(m=>{const d=gm(m);if(d&&d.sections&&d.sections.income)d.sections.income.items.forEach(it=>{if(it.name)ns.add(it.name)})});
-return ns.size>0?Array.from(ns):DEFAULTS.income.preset;
-},[allData,yr]);
-const exC=[{k:“deductions”,l:”\u5f15\u843d”},{k:“transfers”,l:”\u632f\u8fbc”},{k:“living”,l:”\u751f\u6d3b\u8cbb”},{k:“specialSavings”,l:”\u7279\u5225\u8caf\u91d1”}];
-const mda=useMemo(()=>ms.map(m=>{
-const d=gm(m);if(!d)return null;
-const ib={};incNames.forEach(n=>{const it=(d.sections.income.items||[]).find(x=>x.name===n);ib[n]=it?pa(it.amount):0});
-const iT=st(d,“income”);const eb={};let tE=0;
-exC.forEach(({k})=>{const v=st(d,k);eb[k]=v;tE+=v});
-const s=pa(d.savingsAmount),cm=cumSav[mk(yr,m)]||0;
-return{ib,iT,eb,tE,s,cm,bl:iT-tE-s};
-}),[allData,yr,incNames,cumSav]);
-const yT=useMemo(()=>{
-const t={ib:{},iT:0,eb:{},tE:0,s:0};incNames.forEach(n=>{t.ib[n]=0});exC.forEach(({k})=>{t.eb[k]=0});
-mda.forEach(x=>{if(!x)return;incNames.forEach(n=>{t.ib[n]+=x.ib[n]||0});t.iT+=x.iT;exC.forEach(({k})=>{t.eb[k]+=x.eb[k]||0});t.tE+=x.tE;t.s+=x.s});
-t.bl=t.iT-t.tE-t.s;return t;
-},[mda]);
-const vc=v=>v>0?”#2d6a4f”:v<0?”#c1121f”:”#9b8b78”;
-const cs={padding:“6px 4px”,fontSize:“0.65rem”,textAlign:“right”,borderBottom:“1px solid rgba(139,117,85,0.08)”,whiteSpace:“nowrap”};
-const hc=Object.assign({},cs,{fontWeight:700,color:”#5c4a32”,textAlign:“center”,background:“rgba(139,117,85,0.06)”,position:“sticky”,top:0,zIndex:2});
-const lc=Object.assign({},cs,{textAlign:“left”,fontWeight:600,color:”#5c4a32”,position:“sticky”,left:0,background:”#faf8f5”,zIndex:1,minWidth:70,paddingLeft:8});
-const slc=Object.assign({},lc,{fontWeight:400,color:”#8b7555”,paddingLeft:14,fontSize:“0.6rem”});
-const tc=Object.assign({},cs,{fontWeight:700,background:“rgba(139,117,85,0.04)”});
-const tlc=Object.assign({},lc,{fontWeight:700,background:“rgba(139,117,85,0.04)”});
-const nb={background:“rgba(139,117,85,0.1)”,border:“1px solid rgba(139,117,85,0.2)”,borderRadius:8,width:36,height:36,fontSize:“0.9rem”,color:”#5c4a32”,cursor:“pointer”,display:“flex”,alignItems:“center”,justifyContent:“center”};
+```
+function gm(m) {
+  var d = allData[monthKey(yr, m)];
+  return d ? ensure(d) : null;
+}
+function st(d, k) {
+  if (!d || !d.sections || !d.sections[k]) return 0;
+  return d.sections[k].items.reduce(function(s, it) { return s + pa(it.amount); }, 0);
+}
 
-return e(“div”,{style:{position:“relative”,zIndex:1,padding:“0 8px”}},
-e(“div”,{style:{display:“flex”,alignItems:“center”,justifyContent:“center”,gap:16,marginBottom:16}},
-e(“button”,{style:nb,onClick:()=>setYr(y=>y-1)},”\u25c0”),
-e(“span”,{style:{fontSize:“1.2rem”,fontWeight:700,color:”#5c4a32”}},yr+”\u5e74”),
-e(“button”,{style:nb,onClick:()=>setYr(y=>y+1)},”\u25b6”)),
-e(“div”,{style:{overflowX:“auto”,overflowY:“auto”,maxHeight:“65vh”,borderRadius:12,border:“1px solid rgba(139,117,85,0.12)”,background:“rgba(255,255,255,0.7)”,WebkitOverflowScrolling:“touch”}},
-e(“table”,{style:{borderCollapse:“collapse”,minWidth:820,width:“100%”}},
-e(“thead”,null,e(“tr”,null,
-e(“th”,{style:Object.assign({},hc,{position:“sticky”,left:0,zIndex:3,minWidth:70,background:“rgba(250,248,245,0.95)”})},”\u00a0”),
-ms.map(m=>e(“th”,{key:m,style:Object.assign({},hc,{minWidth:52})},m+”\u6708”)),
-e(“th”,{style:Object.assign({},hc,{minWidth:62,background:“rgba(45,106,79,0.1)”,color:”#1b4332”})},”\u5e74\u8a08”))),
-e(“tbody”,null,
-e(“tr”,null,e(“td”,{style:Object.assign({},lc,{background:“rgba(45,106,79,0.06)”,color:”#2d6a4f”,fontSize:“0.7rem”}),colSpan:14},”\ud83d\udcb0 \u53ce\u5165”)),
-incNames.map(n=>e(“tr”,{key:“i-”+n},e(“td”,{style:slc},n),ms.map(m=>{const v=mda[m-1]&&mda[m-1].ib[n]||0;return e(“td”,{key:m,style:Object.assign({},cs,{color:v>0?”#2d6a4f”:”#ccc”})},fmtS(v))}),e(“td”,{style:Object.assign({},tc,{color:”#2d6a4f”})},fmtS(yT.ib[n])))),
-e(“tr”,null,e(“td”,{style:tlc},”\u53ce\u5165\u5408\u8a08”),ms.map(m=>e(“td”,{key:m,style:Object.assign({},tc,{color:”#2d6a4f”})},fmtS(mda[m-1]&&mda[m-1].iT))),e(“td”,{style:Object.assign({},tc,{color:”#1b4332”,fontSize:“0.7rem”})},fmtS(yT.iT))),
-e(“tr”,null,e(“td”,{style:Object.assign({},lc,{background:“rgba(139,94,60,0.06)”,color:”#8b5e3c”,fontSize:“0.7rem”}),colSpan:14},”\ud83d\udcca \u652f\u51fa\u5185\u8a33”)),
-exC.map(({k,l})=>e(“tr”,{key:“e-”+k},e(“td”,{style:slc},l),ms.map(m=>{const v=mda[m-1]&&mda[m-1].eb[k]||0;return e(“td”,{key:m,style:Object.assign({},cs,{color:v>0?”#8b5e3c”:”#ccc”})},fmtS(v))}),e(“td”,{style:Object.assign({},tc,{color:”#8b5e3c”})},fmtS(yT.eb[k])))),
-e(“tr”,null,e(“td”,{style:tlc},”\u652f\u51fa\u5408\u8a08”),ms.map(m=>e(“td”,{key:m,style:Object.assign({},tc,{color:”#8b5e3c”})},fmtS(mda[m-1]&&mda[m-1].tE))),e(“td”,{style:Object.assign({},tc,{color:”#8b5e3c”,fontSize:“0.7rem”})},fmtS(yT.tE))),
-e(“tr”,null,e(“td”,{style:Object.assign({},lc,{background:“rgba(45,106,79,0.06)”,color:”#2d6a4f”,fontSize:“0.7rem”}),colSpan:14},”\ud83d\udc37 \u8caf\u91d1”)),
-e(“tr”,null,e(“td”,{style:slc},”\u5f53\u6708\u8caf\u91d1”),ms.map(m=>{const v=mda[m-1]&&mda[m-1].s||0;return e(“td”,{key:m,style:Object.assign({},cs,{color:v>0?”#2d6a4f”:”#ccc”})},fmtS(v))}),e(“td”,{style:Object.assign({},tc,{color:”#2d6a4f”})},fmtS(yT.s))),
-e(“tr”,null,e(“td”,{style:slc},”\u8caf\u91d1\u7d2f\u8a08”),ms.map(m=>{const v=mda[m-1]&&mda[m-1].cm||0;return e(“td”,{key:m,style:Object.assign({},cs,{color:v>0?”#1b4332”:”#ccc”,fontWeight:600})},fmtS(v))}),e(“td”,{style:Object.assign({},tc,{color:”#1b4332”})},”\u2014”)),
-e(“tr”,null,e(“td”,{style:Object.assign({},tlc,{background:“rgba(45,106,79,0.08)”,borderTop:“2px solid rgba(45,106,79,0.2)”})},”\u6708\u672b\u6b8b\u9ad8”),ms.map(m=>{const v=mda[m-1]&&mda[m-1].bl;return e(“td”,{key:m,style:Object.assign({},tc,{background:“rgba(45,106,79,0.04)”,borderTop:“2px solid rgba(45,106,79,0.2)”,color:v!=null?vc(v):”#ccc”,fontWeight:700})},v!=null?fmtS(v):”-”)}),e(“td”,{style:Object.assign({},tc,{background:“rgba(45,106,79,0.08)”,borderTop:“2px solid rgba(45,106,79,0.2)”,color:vc(yT.bl),fontWeight:700,fontSize:“0.7rem”})},fmtS(yT.bl)))
-))),
-e(“div”,{style:{display:“grid”,gridTemplateColumns:“1fr 1fr”,gap:10,marginTop:16}},
-[{l:”\u5e74\u9593\u7dcf\u53ce\u5165”,v:yT.iT,c:”#2d6a4f”},{l:”\u5e74\u9593\u7dcf\u652f\u51fa”,v:yT.tE,c:”#8b5e3c”},{l:”\u5e74\u9593\u8caf\u91d1\u984d”,v:yT.s,c:”#1b4332”},{l:”\u5e74\u9593\u6b8b\u9ad8”,v:yT.bl,c:vc(yT.bl)}].map(({l,v,c})=>
-e(“div”,{key:l,style:{background:“rgba(255,255,255,0.7)”,borderRadius:12,padding:“12px 14px”,border:“1px solid rgba(139,117,85,0.1)”}},
-e(“div”,{style:{fontSize:“0.7rem”,color:”#9b8b78”,marginBottom:4}},l),
-e(“div”,{style:{fontSize:“1.05rem”,fontWeight:700,color:c}},fmt(v)))))
+var incNames = useMemo(function() {
+  var ns = [];
+  var seen = {};
+  ms.forEach(function(m) {
+    var d = gm(m);
+    if (d && d.sections && d.sections.income) {
+      d.sections.income.items.forEach(function(it) {
+        if (it.name && !seen[it.name]) { seen[it.name] = true; ns.push(it.name); }
+      });
+    }
+  });
+  return ns.length > 0 ? ns : DEFAULTS.income.preset;
+}, [allData, yr]);
+
+var exC = [
+  { k: "deductions", l: "引落" },
+  { k: "transfers", l: "振込" },
+  { k: "living", l: "生活費" },
+  { k: "specialSavings", l: "特別貯金" }
+];
+
+var mda = useMemo(function() {
+  return ms.map(function(m) {
+    var d = gm(m);
+    if (!d) return null;
+    var ib = {};
+    incNames.forEach(function(n) {
+      var it = d.sections.income.items.find(function(x) { return x.name === n; });
+      ib[n] = it ? pa(it.amount) : 0;
+    });
+    var iT = st(d, "income");
+    var eb = {};
+    var tE = 0;
+    exC.forEach(function(c) { var v = st(d, c.k); eb[c.k] = v; tE += v; });
+    var sv = pa(d.savingsAmount);
+    var cm = cumSav[monthKey(yr, m)] || 0;
+    return { ib: ib, iT: iT, eb: eb, tE: tE, sv: sv, cm: cm, bl: iT - tE - sv };
+  });
+}, [allData, yr, incNames, cumSav]);
+
+var yT = useMemo(function() {
+  var t = { ib: {}, iT: 0, eb: {}, tE: 0, sv: 0 };
+  incNames.forEach(function(n) { t.ib[n] = 0; });
+  exC.forEach(function(c) { t.eb[c.k] = 0; });
+  mda.forEach(function(x) {
+    if (!x) return;
+    incNames.forEach(function(n) { t.ib[n] += (x.ib[n] || 0); });
+    t.iT += x.iT;
+    exC.forEach(function(c) { t.eb[c.k] += (x.eb[c.k] || 0); });
+    t.tE += x.tE;
+    t.sv += x.sv;
+  });
+  t.bl = t.iT - t.tE - t.sv;
+  return t;
+}, [mda]);
+
+function vc(v) { return v > 0 ? "#2d6a4f" : v < 0 ? "#c1121f" : "#9b8b78"; }
+
+var cs = { padding:"6px 4px", fontSize:"0.65rem", textAlign:"right", borderBottom:"1px solid rgba(139,117,85,0.08)", whiteSpace:"nowrap" };
+var hcs = Object.assign({}, cs, { fontWeight:700, color:"#5c4a32", textAlign:"center", background:"rgba(139,117,85,0.06)", position:"sticky", top:0, zIndex:2 });
+var lcs = Object.assign({}, cs, { textAlign:"left", fontWeight:600, color:"#5c4a32", position:"sticky", left:0, background:"#faf8f5", zIndex:1, minWidth:70, paddingLeft:8 });
+var slcs = Object.assign({}, lcs, { fontWeight:400, color:"#8b7555", paddingLeft:14, fontSize:"0.6rem" });
+var tcs = Object.assign({}, cs, { fontWeight:700, background:"rgba(139,117,85,0.04)" });
+var tlcs = Object.assign({}, lcs, { fontWeight:700, background:"rgba(139,117,85,0.04)" });
+var nb = { background:"rgba(139,117,85,0.1)", border:"1px solid rgba(139,117,85,0.2)", borderRadius:8, width:36, height:36, fontSize:"0.9rem", color:"#5c4a32", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" };
+
+return h("div", { style: { position:"relative", zIndex:1, padding:"0 8px" } },
+  h("div", { style: { display:"flex", alignItems:"center", justifyContent:"center", gap:16, marginBottom:16 } },
+    h("button", { style: nb, onClick: function() { setYr(function(y) { return y - 1; }); } }, "◀"),
+    h("span", { style: { fontSize:"1.2rem", fontWeight:700, color:"#5c4a32" } }, yr + "年"),
+    h("button", { style: nb, onClick: function() { setYr(function(y) { return y + 1; }); } }, "▶")
+  ),
+  h("div", { style: { overflowX:"auto", overflowY:"auto", maxHeight:"65vh", borderRadius:12, border:"1px solid rgba(139,117,85,0.12)", background:"rgba(255,255,255,0.7)", WebkitOverflowScrolling:"touch" } },
+    h("table", { style: { borderCollapse:"collapse", minWidth:820, width:"100%" } },
+      h("thead", null, h("tr", null,
+        h("th", { style: Object.assign({}, hcs, { position:"sticky", left:0, zIndex:3, background:"rgba(250,248,245,0.95)" }) }, ""),
+        ms.map(function(m) { return h("th", { key: m, style: Object.assign({}, hcs, { minWidth:52 }) }, m + "月"); }),
+        h("th", { style: Object.assign({}, hcs, { minWidth:62, background:"rgba(45,106,79,0.1)", color:"#1b4332" }) }, "年計")
+      )),
+      h("tbody", null,
+        h("tr", null, h("td", { style: Object.assign({}, lcs, { background:"rgba(45,106,79,0.06)", color:"#2d6a4f", fontSize:"0.7rem" }), colSpan: 14 }, "💰 収入")),
+        incNames.map(function(n) {
+          return h("tr", { key: "i-" + n },
+            h("td", { style: slcs }, n),
+            ms.map(function(m) { var v = mda[m-1] ? (mda[m-1].ib[n] || 0) : 0; return h("td", { key: m, style: Object.assign({}, cs, { color: v > 0 ? "#2d6a4f" : "#ccc" }) }, fmtS(v)); }),
+            h("td", { style: Object.assign({}, tcs, { color: "#2d6a4f" }) }, fmtS(yT.ib[n]))
+          );
+        }),
+        h("tr", null, h("td", { style: tlcs }, "収入合計"),
+          ms.map(function(m) { return h("td", { key: m, style: Object.assign({}, tcs, { color: "#2d6a4f" }) }, fmtS(mda[m-1] ? mda[m-1].iT : 0)); }),
+          h("td", { style: Object.assign({}, tcs, { color: "#1b4332" }) }, fmtS(yT.iT))),
+        h("tr", null, h("td", { style: Object.assign({}, lcs, { background:"rgba(139,94,60,0.06)", color:"#8b5e3c", fontSize:"0.7rem" }), colSpan: 14 }, "📊 支出内訳")),
+        exC.map(function(c) {
+          return h("tr", { key: "e-" + c.k },
+            h("td", { style: slcs }, c.l),
+            ms.map(function(m) { var v = mda[m-1] ? (mda[m-1].eb[c.k] || 0) : 0; return h("td", { key: m, style: Object.assign({}, cs, { color: v > 0 ? "#8b5e3c" : "#ccc" }) }, fmtS(v)); }),
+            h("td", { style: Object.assign({}, tcs, { color: "#8b5e3c" }) }, fmtS(yT.eb[c.k]))
+          );
+        }),
+        h("tr", null, h("td", { style: tlcs }, "支出合計"),
+          ms.map(function(m) { return h("td", { key: m, style: Object.assign({}, tcs, { color: "#8b5e3c" }) }, fmtS(mda[m-1] ? mda[m-1].tE : 0)); }),
+          h("td", { style: Object.assign({}, tcs, { color: "#8b5e3c" }) }, fmtS(yT.tE))),
+        h("tr", null, h("td", { style: Object.assign({}, lcs, { background:"rgba(45,106,79,0.06)", color:"#2d6a4f", fontSize:"0.7rem" }), colSpan: 14 }, "🐷 貯金")),
+        h("tr", null, h("td", { style: slcs }, "当月貯金"),
+          ms.map(function(m) { var v = mda[m-1] ? mda[m-1].sv : 0; return h("td", { key: m, style: Object.assign({}, cs, { color: v > 0 ? "#2d6a4f" : "#ccc" }) }, fmtS(v)); }),
+          h("td", { style: Object.assign({}, tcs, { color: "#2d6a4f" }) }, fmtS(yT.sv))),
+        h("tr", null, h("td", { style: slcs }, "貯金累計"),
+          ms.map(function(m) { var v = mda[m-1] ? mda[m-1].cm : 0; return h("td", { key: m, style: Object.assign({}, cs, { color: v > 0 ? "#1b4332" : "#ccc", fontWeight:600 }) }, fmtS(v)); }),
+          h("td", { style: Object.assign({}, tcs, { color: "#1b4332" }) }, "—")),
+        h("tr", null,
+          h("td", { style: Object.assign({}, tlcs, { background:"rgba(45,106,79,0.08)", borderTop:"2px solid rgba(45,106,79,0.2)" }) }, "月末残高"),
+          ms.map(function(m) {
+            var v = mda[m-1] ? mda[m-1].bl : null;
+            return h("td", { key: m, style: Object.assign({}, tcs, { background:"rgba(45,106,79,0.04)", borderTop:"2px solid rgba(45,106,79,0.2)", color: v !== null ? vc(v) : "#ccc", fontWeight:700 }) }, v !== null ? fmtS(v) : "-");
+          }),
+          h("td", { style: Object.assign({}, tcs, { background:"rgba(45,106,79,0.08)", borderTop:"2px solid rgba(45,106,79,0.2)", color: vc(yT.bl), fontWeight:700 }) }, fmtS(yT.bl))
+        )
+      )
+    )
+  ),
+  h("div", { style: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:16 } },
+    [
+      { l: "年間総収入", v: yT.iT, c: "#2d6a4f" },
+      { l: "年間総支出", v: yT.tE, c: "#8b5e3c" },
+      { l: "年間貯金額", v: yT.sv, c: "#1b4332" },
+      { l: "年間残高", v: yT.bl, c: vc(yT.bl) }
+    ].map(function(item) {
+      return h("div", { key: item.l, style: { background:"rgba(255,255,255,0.7)", borderRadius:12, padding:"12px 14px", border:"1px solid rgba(139,117,85,0.1)" } },
+        h("div", { style: { fontSize:"0.7rem", color:"#9b8b78", marginBottom:4 } }, item.l),
+        h("div", { style: { fontSize:"1.05rem", fontWeight:700, color: item.c } }, fmt(item.v))
+      );
+    })
+  )
 );
-}
-
-/* ═══ Main App ═══ */
-function App(){
-const now=new Date();
-const[cY,sCY]=useState(now.getFullYear()),[cM,sCM]=useState(now.getMonth()+1);
-const[all,sAll]=useState({}),[ok,sOk]=useState(false);
-const[hist,sHist]=useState(false),[cumBase,sCB]=useState(””);
-const[tab,sTab]=useState(“monthly”),[aY,sAY]=useState(now.getFullYear());
-const mkey=mk(cY,cM);
-
-useEffect(()=>{
-const d=ld();
-if(d&&d.months){try{const s={};Object.entries(d.months).forEach(([k,v])=>{s[k]=ensure(v)});sAll(s)}catch(e){sAll({})}if(d.cumBase!==undefined)sCB(String(d.cumBase||””))}
-sOk(true);
-},[]);
-
-useEffect(()=>{if(ok)sv({months:all,cumBase})},[all,cumBase,ok]);
-
-const carry=useCallback((ad,ck)=>{
-const ks=Object.keys(ad).filter(k=>k<ck).sort().reverse();
-if(ks.length===0)return fresh();
-const p=ensure(ad[ks[0]]);
-const c={sections:{},savingsAmount:””,savingsChecked:false,savingsTitle:p.savingsTitle||”\u2465 \u8caf\u91d1”,memo:””};
-Object.keys(DEFAULTS).forEach(sk=>{
-const ps=p.sections[sk];
-if(ps&&Array.isArray(ps.items)){c.sections[sk]={title:ps.title||DEFAULTS[sk].title,icon:DEFAULTS[sk].icon,items:ps.items.map(it=>mkItem(it.name,sk))}}
-else{c.sections[sk]={title:DEFAULTS[sk].title,icon:DEFAULTS[sk].icon,items:DEFAULTS[sk].preset.map(n=>mkItem(n,sk))}}
-});return c;
-},[]);
-
-const mD=useMemo(()=>all[mkey]?ensure(all[mkey]):carry(all,mkey),[all,mkey,carry]);
-
-const upd=useCallback(fn=>{sAll(p=>{const c=p[mkey]?ensure(p[mkey]):carry(p,mkey);const n=typeof fn===“function”?fn(c):fn;return Object.assign({},p,{[mkey]:n})})},[mkey,carry]);
-const uI=useCallback((sk,i,f,v)=>{upd(p=>{const n=JSON.parse(JSON.stringify(p));if(n.sections[sk]&&n.sections[sk].items[i])n.sections[sk].items[i][f]=v;return n})},[upd]);
-const addI=useCallback(sk=>{upd(p=>{const n=JSON.parse(JSON.stringify(p));if(!n.sections[sk]||n.sections[sk].items.length>=(DEFAULTS[sk]&&DEFAULTS[sk].max||20))return n;n.sections[sk].items.push(mkItem(””,sk));return n})},[upd]);
-const rmI=useCallback((sk,i)=>{upd(p=>{const n=JSON.parse(JSON.stringify(p));if(!n.sections[sk]||n.sections[sk].items.length<=1)return n;n.sections[sk].items.splice(i,1);return n})},[upd]);
-
-const sT=useCallback(sk=>(mD.sections[sk]&&mD.sections[sk].items||[]).reduce((s,it)=>s+pa(it.amount),0),[mD]);
-const iT=sT(“income”),dT=sT(“deductions”),trT=sT(“transfers”),lT=sT(“living”),spT=sT(“specialSavings”);
-const mSav=pa(mD.savingsAmount);
-const aDed=iT-dT,aTr=aDed-trT,aLiv=aTr-lT,aSp=aLiv-spT,fin=aSp-mSav;
-const cumSav=useMemo(()=>{const b=pa(cumBase);const ks=Object.keys(all).sort();let c=b;const r={};ks.forEach(k=>{c+=pa(all[k]&&all[k].savingsAmount);r[k]=c});return r},[all,cumBase]);
-
-const pM=()=>{if(cM===1){sCY(y=>y-1);sCM(12)}else sCM(m=>m-1)};
-const nM=()=>{if(cM===12){sCY(y=>y+1);sCM(1)}else sCM(m=>m+1)};
-const reset=()=>{if(confirm(cY+”\u5e74”+cM+”\u6708\u306e\u30c7\u30fc\u30bf\u3092\u30ea\u30bb\u30c3\u30c8\u3057\u307e\u3059\u304b\uff1f”))sAll(p=>{const n=Object.assign({},p);delete n[mkey];return n})};
-
-if(!ok)return e(“div”,{style:{display:“flex”,justifyContent:“center”,alignItems:“center”,height:“100vh”}},e(“p”,{style:{color:”#8b7555”}},”\u8aad\u307f\u8fbc\u307f\u4e2d…”));
-
-const renderSec=(sk,bal,bLbl)=>{
-const sec=mD.sections[sk];if(!sec)return null;
-const tot=sT(sk),isI=sk===“income”;
-const cked=isI?0:sec.items.filter(x=>x.checked).length;
-const hasAmt=isI?0:sec.items.filter(x=>pa(x.amount)>0).length;
-const mx=DEFAULTS[sk]&&DEFAULTS[sk].max||20;
-return e(“div”,{style:S.card,key:sk},
-e(“div”,{style:S.secHead},
-e(“span”,{style:{fontSize:“1.2rem”}},sec.icon),
-e(“input”,{style:S.titleIn,value:sec.title,onChange:ev=>upd(p=>{const n=JSON.parse(JSON.stringify(p));n.sections[sk].title=ev.target.value;return n})}),
-!isI&&hasAmt>0?e(“span”,{style:{marginLeft:8,fontSize:“0.7rem”,color:cked===hasAmt?”#2d6a4f”:”#9b8b78”,fontWeight:600,flexShrink:0}},cked===hasAmt?”\u2705 \u5b8c\u4e86”:cked+”/”+hasAmt):null),
-e(“div”,{style:{display:“flex”,flexDirection:“column”,gap:8}},
-sec.items.map((it,i)=>e(“div”,{key:i,style:{display:“flex”,alignItems:“center”,gap:5,opacity:!isI&&it.checked?0.5:1,transition:“opacity 0.2s”}},
-e(“button”,{onClick:()=>rmI(sk,i),disabled:sec.items.length<=1,style:{width:20,height:20,borderRadius:5,border:“none”,cursor:sec.items.length<=1?“default”:“pointer”,display:“flex”,alignItems:“center”,justifyContent:“center”,fontSize:“0.6rem”,background:“rgba(193,18,31,0.08)”,color:”#c1121f”,flexShrink:0,opacity:sec.items.length<=1?0.3:0.7}},”\u2715”),
-e(“input”,{style:S.nameIn,value:it.name,placeholder:”\u9805\u76ee\u540d\u3092\u5165\u529b”,onChange:ev=>uI(sk,i,“name”,ev.target.value)}),
-e(“div”,{style:{display:“flex”,alignItems:“center”,gap:4}},
-e(“div”,{style:S.amtW},e(“span”,{style:S.yen},”\u00a5”),e(“input”,{style:S.amtIn,type:“text”,inputMode:“numeric”,placeholder:“0”,value:it.amount,onChange:ev=>uI(sk,i,“amount”,ev.target.value.replace(/[^0-9]/g,””))})),
-!isI?e(“button”,{onClick:()=>uI(sk,i,“checked”,!it.checked),style:{width:28,height:28,borderRadius:6,border:“none”,cursor:“pointer”,display:“flex”,alignItems:“center”,justifyContent:“center”,fontSize:“0.9rem”,background:it.checked?“rgba(45,106,79,0.15)”:“rgba(139,117,85,0.08)”,color:it.checked?”#2d6a4f”:”#c8bdb0”,flexShrink:0}},it.checked?”\u2705”:”\u2610”):null)))),
-e(“button”,{onClick:()=>addI(sk),disabled:sec.items.length>=mx,style:{width:“100%”,padding:“8px 0”,marginTop:10,borderRadius:8,border:“1px dashed rgba(139,117,85,0.25)”,background:“rgba(139,117,85,0.04)”,color:sec.items.length>=mx?”#ccc”:”#8b7555”,fontSize:“0.8rem”,cursor:sec.items.length>=mx?“default”:“pointer”,fontFamily:“inherit”,fontWeight:500}},sec.items.length>=mx?”\u4e0a\u9650”+mx+”\u4ef6\u3067\u3059”:”\uff0b \u9805\u76ee\u3092\u8ffd\u52a0”),
-e(“div”,{style:S.secFoot},
-e(“div”,{style:S.totRow},e(“span”,{style:{fontSize:“0.85rem”,fontWeight:600,color:”#8b7555”}},”\u5408\u8a08”),e(“span”,{style:{fontSize:“1rem”,fontWeight:700,color:isI?”#2d6a4f”:”#8b5e3c”}},fmt(tot))),
-!isI?e(“div”,{style:S.balRow},e(“span”,{style:{fontSize:“0.75rem”,color:”#6b8f71”,fontWeight:500}},bLbl),e(“span”,{style:{fontSize:“1rem”,fontWeight:700,color:bal>=0?”#2d6a4f”:”#c1121f”}},fmt(bal))):null));
-};
-
-const hKeys=Object.keys(all).sort().reverse();
-
-return e(“div”,null,
-e(“div”,{style:S.bg}),
-e(“header”,{style:S.hdr},e(“h1”,{style:{fontSize:“1.6rem”,fontWeight:700,color:”#5c4a32”,letterSpacing:“0.15em”}},”\u5bb6\u8a08\u30ce\u30fc\u30c8”),e(“p”,{style:{fontSize:“0.8rem”,color:”#9b8b78”,marginTop:4,letterSpacing:“0.1em”}},”\u53ce\u652f\u7ba1\u7406 \uff06 \u8caf\u91d1\u30c8\u30e9\u30c3\u30ab\u30fc”)),
-e(“div”,{style:S.tabs},
-e(“button”,{style:tab===“monthly”?S.tabOn:S.tabOff,onClick:()=>sTab(“monthly”)},”\ud83d\udcc5 \u6708\u5225\u5165\u529b”),
-e(“button”,{style:tab===“annual”?S.tabOn:S.tabOff,onClick:()=>{sTab(“annual”);sAY(cY)}},”\ud83d\udcca \u5e74\u9593\u4e00\u89a7”)),
-
-```
-tab==="annual"?e(AnnualView,{allData:all,yr:aY,setYr:sAY,cumSav:cumSav}):
-e(Fragment,null,
-  e("div",{style:S.mNav},
-    e("button",{style:S.nBtn,onClick:pM},"\u25c0"),
-    e("div",{style:{display:"flex",flexDirection:"column",alignItems:"center"}},
-      e("span",{style:{fontSize:"0.75rem",color:"#9b8b78"}},cY+"\u5e74"),
-      e("span",{style:{fontSize:"1.5rem",fontWeight:700,color:"#5c4a32"}},cM+"\u6708")),
-    e("button",{style:S.nBtn,onClick:nM},"\u25b6")),
-
-  e("div",{style:S.actBar},
-    e("button",{style:S.actBtn,onClick:()=>sHist(!hist)},hist?"\u2715 \u9589\u3058\u308b":"\ud83d\udcca \u5c65\u6b74\u30fb\u7d2f\u8a08"),
-    e("button",{style:Object.assign({},S.actBtn,{background:"rgba(139,117,85,0.1)",borderColor:"rgba(139,117,85,0.2)",color:"#8b7555"}),onClick:reset},"\ud83d\udd04 \u30ea\u30bb\u30c3\u30c8")),
-
-  hist?e("div",{style:S.histPanel},
-    e("h3",{style:{margin:"0 0 16px",fontSize:"1rem",color:"#5c4a32"}},"\ud83d\udcca \u8caf\u91d1\u5c65\u6b74 \uff06 \u7d2f\u8a08"),
-    e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,paddingBottom:12,borderBottom:"1px dashed rgba(139,117,85,0.2)"}},
-      e("label",{style:{fontSize:"0.8rem",color:"#8b7555",marginRight:8}},"\u8caf\u91d1\u958b\u59cb\u984d"),
-      e("div",{style:S.amtW},e("span",{style:S.yen},"\u00a5"),e("input",{style:S.amtIn,type:"text",inputMode:"numeric",placeholder:"0",value:cumBase,onChange:ev=>sCB(ev.target.value.replace(/[^0-9]/g,""))}))),
-    hKeys.length===0?e("p",{style:{textAlign:"center",color:"#9b8b78",fontSize:"0.85rem"}},"\u307e\u3060\u30c7\u30fc\u30bf\u304c\u3042\u308a\u307e\u305b\u3093"):
-    e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-      hKeys.map(k=>{const s=pa(all[k]&&all[k].savingsAmount);const cm=cumSav[k]||0;const p=k.split("-");
-        return e("div",{key:k,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"rgba(139,117,85,0.05)",borderRadius:8}},
-          e("span",{style:{fontWeight:600,fontSize:"0.85rem",color:"#5c4a32"}},p[0]+"\u5e74"+parseInt(p[1])+"\u6708"),
-          e("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}},
-            e("span",{style:{fontSize:"0.8rem",color:"#8b7555"}},"\u6708: "+fmt(s)),
-            e("span",{style:{fontSize:"0.85rem",fontWeight:700,color:"#2d6a4f"}},"\u7d2f\u8a08: "+fmt(cm))))}))
-  ):null,
-
-  e("main",{style:S.main},
-    renderSec("income",0,""),
-    renderSec("deductions",aDed,"\u53ce\u5165 \u2212 \u5f15\u843d \u6b8b\u9ad8"),
-    renderSec("transfers",aTr,"\u6b8b\u9ad8 \u2212 \u632f\u8fbc \u6b8b\u9ad8"),
-    renderSec("living",aLiv,"\u6b8b\u9ad8 \u2212 \u751f\u6d3b\u8cbb \u6b8b\u9ad8"),
-    renderSec("specialSavings",aSp,"\u6b8b\u9ad8 \u2212 \u7279\u5225\u8caf\u91d1 \u6b8b\u9ad8"),
-
-    e("div",{style:Object.assign({},S.card,{background:"linear-gradient(135deg,rgba(45,106,79,0.08) 0%,rgba(255,255,255,0.7) 100%)",border:"1px solid rgba(45,106,79,0.15)"})},
-      e("div",{style:S.secHead},
-        e("span",{style:{fontSize:"1.2rem"}},"\ud83d\udc37"),
-        e("input",{style:S.titleIn,value:mD.savingsTitle||"\u2465 \u8caf\u91d1",onChange:ev=>upd(p=>Object.assign({},p,{savingsTitle:ev.target.value}))})),
-      e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:16}},
-        e("label",{style:{fontSize:"0.85rem",fontWeight:600,color:"#2d6a4f"}},"\u4eca\u6708\u306e\u8caf\u91d1\u984d"),
-        e("div",{style:{display:"flex",alignItems:"center",gap:5}},
-          e("div",{style:S.amtW},e("span",{style:S.yen},"\u00a5"),e("input",{style:Object.assign({},S.amtIn,{fontSize:"1.1rem"}),type:"text",inputMode:"numeric",placeholder:"0",value:mD.savingsAmount,onChange:ev=>upd(p=>Object.assign({},p,{savingsAmount:ev.target.value.replace(/[^0-9]/g,"")}))})),
-          e("button",{onClick:()=>upd(p=>Object.assign({},p,{savingsChecked:!p.savingsChecked})),style:{width:30,height:30,borderRadius:7,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.95rem",background:mD.savingsChecked?"rgba(45,106,79,0.15)":"rgba(139,117,85,0.08)",color:mD.savingsChecked?"#2d6a4f":"#c8bdb0",flexShrink:0}},mD.savingsChecked?"\u2705":"\u2610"))),
-      e("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:14}},
-        e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"0.9rem"}},e("span",null,"\u4eca\u6708\u306e\u8caf\u91d1"),e("span",{style:{color:"#2d6a4f",fontWeight:700}},fmt(mSav))),
-        e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"0.9rem"}},e("span",null,"\u8caf\u91d1\u7d2f\u8a08"),e("span",{style:{color:"#1b4332",fontWeight:700,fontSize:"1.1rem"}},fmt(cumSav[mkey]||pa(cumBase))))),
-      e("div",{style:S.secFoot},e("div",{style:S.balRow},e("span",{style:{fontSize:"0.75rem",color:"#6b8f71",fontWeight:500}},"\u6700\u7d42\u6b8b\u9ad8\uff08\u8caf\u91d1\u5f8c\uff09"),e("span",{style:{fontSize:"1.15rem",fontWeight:700,color:fin>=0?"#2d6a4f":"#c1121f"}},fmt(fin))))),
-
-    e("div",{style:S.card},
-      e("h3",{style:{margin:"0 0 16px",fontSize:"1rem",color:"#5c4a32"}},"\ud83d\udccb \u4eca\u6708\u306e\u307e\u3068\u3081"),
-      e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}},
-        [{l:"\u7dcf\u53ce\u5165",v:iT,c:"#2d6a4f"},{l:"\u7dcf\u652f\u51fa",v:dT+trT+lT+spT,c:"#8b5e3c"},{l:"\u8caf\u91d1\u984d",v:mSav,c:"#1b4332"},{l:"\u6700\u7d42\u6b8b\u9ad8",v:fin,c:fin>=0?"#2d6a4f":"#c1121f"}].map(({l,v,c})=>
-          e("div",{key:l,style:{display:"flex",flexDirection:"column",gap:4,padding:"10px 12px",background:"rgba(139,117,85,0.05)",borderRadius:10}},
-            e("span",{style:{fontSize:"0.75rem",color:"#9b8b78"}},l),
-            e("span",{style:{fontSize:"1rem",fontWeight:700,color:c}},fmt(v))))),
-      e("div",null,
-        e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"0.75rem",color:"#8b7555",marginBottom:6}},e("span",null,"\u652f\u51fa\u7387"),e("span",null,(iT>0?Math.round((dT+trT+lT+spT)/iT*100):0)+"%")),
-        e("div",{style:{height:8,background:"rgba(139,117,85,0.1)",borderRadius:4,overflow:"hidden"}},
-          e("div",{style:{height:"100%",background:"linear-gradient(90deg,#2d6a4f,#52b788)",borderRadius:4,transition:"width 0.4s",width:Math.min(100,iT>0?(dT+trT+lT+spT)/iT*100:0)+"%"}})))),
-
-    e("div",{style:S.card},
-      e("h3",{style:{margin:"0 0 12px",fontSize:"1rem",color:"#5c4a32"}},"\ud83d\udcdd \u30e1\u30e2"),
-      e("textarea",{style:S.memo,placeholder:"\u4eca\u6708\u306e\u632f\u308a\u8fd4\u308a\u3084\u30e1\u30e2\u3092\u3053\u3053\u306b...",value:mD.memo||"",onChange:ev=>upd(p=>Object.assign({},p,{memo:ev.target.value}))})))),
-
-e("footer",{style:{position:"relative",zIndex:1,textAlign:"center",padding:"24px 20px"}},
-  e("p",{style:{fontSize:"0.7rem",color:"#b8a898"}},"\u5bb6\u8a08\u30ce\u30fc\u30c8 \u2014 \u30c7\u30fc\u30bf\u306f\u81ea\u52d5\u4fdd\u5b58\u3055\u308c\u307e\u3059")));
 ```
 
 }
 
-ReactDOM.render(e(App),document.getElementById(“root”));
+// ===== MAIN APP =====
+function App() {
+var now = new Date();
+var cYState = useState(now.getFullYear()); var cY = cYState[0]; var sCY = cYState[1];
+var cMState = useState(now.getMonth() + 1); var cM = cMState[0]; var sCM = cMState[1];
+var allState = useState({}); var all = allState[0]; var sAll = allState[1];
+var okState = useState(false); var ok = okState[0]; var sOk = okState[1];
+var histState = useState(false); var hist = histState[0]; var sHist = histState[1];
+var cbState = useState(””); var cumBase = cbState[0]; var sCB = cbState[1];
+var tabState = useState(“monthly”); var tab = tabState[0]; var sTab = tabState[1];
+var ayState = useState(now.getFullYear()); var aY = ayState[0]; var sAY = ayState[1];
+
+```
+var mkey = monthKey(cY, cM);
+
+useEffect(function() {
+  var d = loadAll();
+  if (d && d.months) {
+    try {
+      var safe = {};
+      var keys = Object.keys(d.months);
+      for (var i = 0; i < keys.length; i++) { safe[keys[i]] = ensure(d.months[keys[i]]); }
+      sAll(safe);
+    } catch(e) { sAll({}); }
+    if (d.cumBase !== undefined) { sCB(String(d.cumBase || "")); }
+  }
+  sOk(true);
+}, []);
+
+useEffect(function() {
+  if (ok) { saveAll({ months: all, cumBase: cumBase }); }
+}, [all, cumBase, ok]);
+
+var carry = useCallback(function(ad, ck) {
+  var ks = Object.keys(ad).filter(function(k) { return k < ck; }).sort().reverse();
+  if (ks.length === 0) return freshMonth();
+  var p = ensure(ad[ks[0]]);
+  var c = { sections: {}, savingsAmount: "", savingsChecked: false, savingsTitle: p.savingsTitle || "⑥ 貯金", memo: "" };
+  var dks = Object.keys(DEFAULTS);
+  for (var i = 0; i < dks.length; i++) {
+    var sk = dks[i];
+    var ps = p.sections[sk];
+    if (ps && Array.isArray(ps.items)) {
+      c.sections[sk] = { title: ps.title || DEFAULTS[sk].title, icon: DEFAULTS[sk].icon, items: ps.items.map(function(it) { return mkItem(it.name, sk); }) };
+    } else {
+      c.sections[sk] = { title: DEFAULTS[sk].title, icon: DEFAULTS[sk].icon, items: DEFAULTS[sk].preset.map(function(n) { return mkItem(n, sk); }) };
+    }
+  }
+  return c;
+}, []);
+
+var mD = useMemo(function() {
+  return all[mkey] ? ensure(all[mkey]) : carry(all, mkey);
+}, [all, mkey, carry]);
+
+var upd = useCallback(function(fn) {
+  sAll(function(prev) {
+    var cur = prev[mkey] ? ensure(prev[mkey]) : carry(prev, mkey);
+    var next = typeof fn === "function" ? fn(cur) : fn;
+    var result = Object.assign({}, prev);
+    result[mkey] = next;
+    return result;
+  });
+}, [mkey, carry]);
+
+var uI = useCallback(function(sk, idx, f, v) {
+  upd(function(prev) {
+    var n = JSON.parse(JSON.stringify(prev));
+    if (n.sections[sk] && n.sections[sk].items[idx]) { n.sections[sk].items[idx][f] = v; }
+    return n;
+  });
+}, [upd]);
+
+var addI = useCallback(function(sk) {
+  upd(function(prev) {
+    var n = JSON.parse(JSON.stringify(prev));
+    if (!n.sections[sk] || n.sections[sk].items.length >= (DEFAULTS[sk].max || 20)) return n;
+    n.sections[sk].items.push(mkItem("", sk));
+    return n;
+  });
+}, [upd]);
+
+var rmI = useCallback(function(sk, idx) {
+  upd(function(prev) {
+    var n = JSON.parse(JSON.stringify(prev));
+    if (!n.sections[sk] || n.sections[sk].items.length <= 1) return n;
+    n.sections[sk].items.splice(idx, 1);
+    return n;
+  });
+}, [upd]);
+
+var sT = useCallback(function(sk) {
+  if (!mD.sections[sk]) return 0;
+  return mD.sections[sk].items.reduce(function(s, it) { return s + pa(it.amount); }, 0);
+}, [mD]);
+
+var iT = sT("income"), dT = sT("deductions"), trT = sT("transfers"), lT = sT("living"), spT = sT("specialSavings");
+var mSav = pa(mD.savingsAmount);
+var aDed = iT - dT, aTr = aDed - trT, aLiv = aTr - lT, aSp = aLiv - spT, fin = aSp - mSav;
+
+var cumSav = useMemo(function() {
+  var b = pa(cumBase);
+  var ks = Object.keys(all).sort();
+  var c = b;
+  var r = {};
+  ks.forEach(function(k) { c += pa(all[k] && all[k].savingsAmount); r[k] = c; });
+  return r;
+}, [all, cumBase]);
+
+function pM() { if (cM === 1) { sCY(function(y) { return y - 1; }); sCM(12); } else { sCM(function(m) { return m - 1; }); } }
+function nM() { if (cM === 12) { sCY(function(y) { return y + 1; }); sCM(1); } else { sCM(function(m) { return m + 1; }); } }
+function doReset() { if (confirm(cY + "年" + cM + "月のデータをリセットしますか？")) { sAll(function(p) { var n = Object.assign({}, p); delete n[mkey]; return n; }); } }
+
+if (!ok) return h("div", { style: { display:"flex", justifyContent:"center", alignItems:"center", height:"100vh" } }, h("p", { style: { color:"#8b7555" } }, "読み込み中..."));
+
+function renderSec(sk, bal, bLbl) {
+  var sec = mD.sections[sk];
+  if (!sec) return null;
+  var tot = sT(sk);
+  var isI = (sk === "income");
+  var cked = isI ? 0 : sec.items.filter(function(x) { return x.checked; }).length;
+  var hasAmt = isI ? 0 : sec.items.filter(function(x) { return pa(x.amount) > 0; }).length;
+  var mx = DEFAULTS[sk].max || 20;
+
+  return h("div", { style: S.card, key: sk },
+    h("div", { style: S.secHead },
+      h("span", { style: { fontSize:"1.2rem" } }, sec.icon),
+      h("input", { style: S.titleIn, value: sec.title, onChange: function(ev) {
+        upd(function(prev) { var n = JSON.parse(JSON.stringify(prev)); n.sections[sk].title = ev.target.value; return n; });
+      } }),
+      (!isI && hasAmt > 0) ? h("span", { style: { marginLeft:8, fontSize:"0.7rem", color: cked === hasAmt ? "#2d6a4f" : "#9b8b78", fontWeight:600, flexShrink:0 } }, cked === hasAmt ? "✅ 完了" : cked + "/" + hasAmt) : null
+    ),
+    h("div", { style: { display:"flex", flexDirection:"column", gap:8 } },
+      sec.items.map(function(it, i) {
+        return h("div", { key: i, style: { display:"flex", alignItems:"center", gap:5, opacity: (!isI && it.checked) ? 0.5 : 1 } },
+          h("button", { onClick: function() { rmI(sk, i); }, disabled: sec.items.length <= 1, style: { width:20, height:20, borderRadius:5, border:"none", cursor: sec.items.length <= 1 ? "default" : "pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.6rem", background:"rgba(193,18,31,0.08)", color:"#c1121f", flexShrink:0, opacity: sec.items.length <= 1 ? 0.3 : 0.7 } }, "✕"),
+          h("input", { style: S.nameIn, value: it.name, placeholder: "項目名を入力", onChange: function(ev) { uI(sk, i, "name", ev.target.value); } }),
+          h("div", { style: { display:"flex", alignItems:"center", gap:4 } },
+            h("div", { style: S.amtW },
+              h("span", { style: S.yen }, "¥"),
+              h("input", { style: S.amtIn, type: "text", inputMode: "numeric", placeholder: "0", value: it.amount, onChange: function(ev) { uI(sk, i, "amount", ev.target.value.replace(/[^0-9]/g, "")); } })
+            ),
+            !isI ? h("button", { onClick: function() { uI(sk, i, "checked", !it.checked); }, style: { width:28, height:28, borderRadius:6, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.9rem", background: it.checked ? "rgba(45,106,79,0.15)" : "rgba(139,117,85,0.08)", color: it.checked ? "#2d6a4f" : "#c8bdb0", flexShrink:0 } }, it.checked ? "✅" : "☐") : null
+          )
+        );
+      })
+    ),
+    h("button", { onClick: function() { addI(sk); }, disabled: sec.items.length >= mx, style: { width:"100%", padding:"8px 0", marginTop:10, borderRadius:8, border:"1px dashed rgba(139,117,85,0.25)", background:"rgba(139,117,85,0.04)", color: sec.items.length >= mx ? "#ccc" : "#8b7555", fontSize:"0.8rem", cursor: sec.items.length >= mx ? "default" : "pointer", fontFamily:"inherit", fontWeight:500 } }, sec.items.length >= mx ? "上限" + mx + "件です" : "＋ 項目を追加"),
+    h("div", { style: S.secFoot },
+      h("div", { style: S.totRow },
+        h("span", { style: { fontSize:"0.85rem", fontWeight:600, color:"#8b7555" } }, "合計"),
+        h("span", { style: { fontSize:"1rem", fontWeight:700, color: isI ? "#2d6a4f" : "#8b5e3c" } }, fmt(tot))
+      ),
+      !isI ? h("div", { style: S.balRow },
+        h("span", { style: { fontSize:"0.75rem", color:"#6b8f71", fontWeight:500 } }, bLbl),
+        h("span", { style: { fontSize:"1rem", fontWeight:700, color: bal >= 0 ? "#2d6a4f" : "#c1121f" } }, fmt(bal))
+      ) : null
+    )
+  );
+}
+
+var hKeys = Object.keys(all).sort().reverse();
+
+return h("div", null,
+  h("div", { style: S.bg }),
+  h("header", { style: S.hdr },
+    h("h1", { style: { fontSize:"1.6rem", fontWeight:700, color:"#5c4a32", letterSpacing:"0.15em" } }, "家計ノート"),
+    h("p", { style: { fontSize:"0.8rem", color:"#9b8b78", marginTop:4, letterSpacing:"0.1em" } }, "収支管理 ＆ 貯金トラッカー")
+  ),
+  h("div", { style: S.tabs },
+    h("button", { style: tab === "monthly" ? S.tabOn : S.tabOff, onClick: function() { sTab("monthly"); } }, "📅 月別入力"),
+    h("button", { style: tab === "annual" ? S.tabOn : S.tabOff, onClick: function() { sTab("annual"); sAY(cY); } }, "📊 年間一覧")
+  ),
+
+  tab === "annual" ? h(AnnualView, { allData: all, yr: aY, setYr: sAY, cumSav: cumSav }) :
+  h(Fragment, null,
+    h("div", { style: S.mNav },
+      h("button", { style: S.nBtn, onClick: pM }, "◀"),
+      h("div", { style: { display:"flex", flexDirection:"column", alignItems:"center" } },
+        h("span", { style: { fontSize:"0.75rem", color:"#9b8b78" } }, cY + "年"),
+        h("span", { style: { fontSize:"1.5rem", fontWeight:700, color:"#5c4a32" } }, cM + "月")
+      ),
+      h("button", { style: S.nBtn, onClick: nM }, "▶")
+    ),
+    h("div", { style: S.actBar },
+      h("button", { style: S.actBtn, onClick: function() { sHist(!hist); } }, hist ? "✕ 閉じる" : "📊 履歴・累計"),
+      h("button", { style: S.rstBtn, onClick: doReset }, "🔄 リセット")
+    ),
+
+    hist ? h("div", { style: S.histPanel },
+      h("h3", { style: { margin:"0 0 16px", fontSize:"1rem", color:"#5c4a32" } }, "📊 貯金履歴 ＆ 累計"),
+      h("div", { style: { display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, paddingBottom:12, borderBottom:"1px dashed rgba(139,117,85,0.2)" } },
+        h("label", { style: { fontSize:"0.8rem", color:"#8b7555", marginRight:8 } }, "貯金開始額"),
+        h("div", { style: S.amtW }, h("span", { style: S.yen }, "¥"), h("input", { style: S.amtIn, type:"text", inputMode:"numeric", placeholder:"0", value: cumBase, onChange: function(ev) { sCB(ev.target.value.replace(/[^0-9]/g, "")); } }))
+      ),
+      hKeys.length === 0 ? h("p", { style: { textAlign:"center", color:"#9b8b78", fontSize:"0.85rem" } }, "まだデータがありません") :
+      h("div", { style: { display:"flex", flexDirection:"column", gap:8 } },
+        hKeys.map(function(k) {
+          var s = pa(all[k] && all[k].savingsAmount);
+          var cm = cumSav[k] || 0;
+          var p = k.split("-");
+          return h("div", { key: k, style: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 12px", background:"rgba(139,117,85,0.05)", borderRadius:8 } },
+            h("span", { style: { fontWeight:600, fontSize:"0.85rem", color:"#5c4a32" } }, p[0] + "年" + parseInt(p[1]) + "月"),
+            h("div", { style: { display:"flex", flexDirection:"column", alignItems:"flex-end", gap:2 } },
+              h("span", { style: { fontSize:"0.8rem", color:"#8b7555" } }, "月: " + fmt(s)),
+              h("span", { style: { fontSize:"0.85rem", fontWeight:700, color:"#2d6a4f" } }, "累計: " + fmt(cm))
+            )
+          );
+        })
+      )
+    ) : null,
+
+    h("main", { style: S.main },
+      renderSec("income", 0, ""),
+      renderSec("deductions", aDed, "収入 − 引落 残高"),
+      renderSec("transfers", aTr, "残高 − 振込 残高"),
+      renderSec("living", aLiv, "残高 − 生活費 残高"),
+      renderSec("specialSavings", aSp, "残高 − 特別貯金 残高"),
+
+      h("div", { style: Object.assign({}, S.card, { background:"linear-gradient(135deg,rgba(45,106,79,0.08) 0%,rgba(255,255,255,0.7) 100%)", border:"1px solid rgba(45,106,79,0.15)" }) },
+        h("div", { style: S.secHead },
+          h("span", { style: { fontSize:"1.2rem" } }, "🐷"),
+          h("input", { style: S.titleIn, value: mD.savingsTitle || "⑥ 貯金", onChange: function(ev) { upd(function(p) { return Object.assign({}, p, { savingsTitle: ev.target.value }); }); } })
+        ),
+        h("div", { style: { display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, marginBottom:16 } },
+          h("label", { style: { fontSize:"0.85rem", fontWeight:600, color:"#2d6a4f" } }, "今月の貯金額"),
+          h("div", { style: { display:"flex", alignItems:"center", gap:5 } },
+            h("div", { style: S.amtW }, h("span", { style: S.yen }, "¥"), h("input", { style: Object.assign({}, S.amtIn, { fontSize:"1.1rem" }), type:"text", inputMode:"numeric", placeholder:"0", value: mD.savingsAmount, onChange: function(ev) { upd(function(p) { return Object.assign({}, p, { savingsAmount: ev.target.value.replace(/[^0-9]/g, "") }); }); } })),
+            h("button", { onClick: function() { upd(function(p) { return Object.assign({}, p, { savingsChecked: !p.savingsChecked }); }); }, style: { width:30, height:30, borderRadius:7, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.95rem", background: mD.savingsChecked ? "rgba(45,106,79,0.15)" : "rgba(139,117,85,0.08)", color: mD.savingsChecked ? "#2d6a4f" : "#c8bdb0", flexShrink:0 } }, mD.savingsChecked ? "✅" : "☐")
+          )
+        ),
+        h("div", { style: { display:"flex", flexDirection:"column", gap:8, marginBottom:14 } },
+          h("div", { style: { display:"flex", justifyContent:"space-between", fontSize:"0.9rem" } }, h("span", null, "今月の貯金"), h("span", { style: { color:"#2d6a4f", fontWeight:700 } }, fmt(mSav))),
+          h("div", { style: { display:"flex", justifyContent:"space-between", fontSize:"0.9rem" } }, h("span", null, "貯金累計"), h("span", { style: { color:"#1b4332", fontWeight:700, fontSize:"1.1rem" } }, fmt(cumSav[mkey] || pa(cumBase))))
+        ),
+        h("div", { style: S.secFoot },
+          h("div", { style: S.balRow },
+            h("span", { style: { fontSize:"0.75rem", color:"#6b8f71", fontWeight:500 } }, "最終残高（貯金後）"),
+            h("span", { style: { fontSize:"1.15rem", fontWeight:700, color: fin >= 0 ? "#2d6a4f" : "#c1121f" } }, fmt(fin))
+          )
+        )
+      ),
+
+      h("div", { style: S.card },
+        h("h3", { style: { margin:"0 0 16px", fontSize:"1rem", color:"#5c4a32" } }, "📋 今月のまとめ"),
+        h("div", { style: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 } },
+          [
+            { l: "総収入", v: iT, c: "#2d6a4f" },
+            { l: "総支出", v: dT + trT + lT + spT, c: "#8b5e3c" },
+            { l: "貯金額", v: mSav, c: "#1b4332" },
+            { l: "最終残高", v: fin, c: fin >= 0 ? "#2d6a4f" : "#c1121f" }
+          ].map(function(item) {
+            return h("div", { key: item.l, style: { display:"flex", flexDirection:"column", gap:4, padding:"10px 12px", background:"rgba(139,117,85,0.05)", borderRadius:10 } },
+              h("span", { style: { fontSize:"0.75rem", color:"#9b8b78" } }, item.l),
+              h("span", { style: { fontSize:"1rem", fontWeight:700, color: item.c } }, fmt(item.v))
+            );
+          })
+        ),
+        h("div", null,
+          h("div", { style: { display:"flex", justifyContent:"space-between", fontSize:"0.75rem", color:"#8b7555", marginBottom:6 } },
+            h("span", null, "支出率"),
+            h("span", null, (iT > 0 ? Math.round((dT + trT + lT + spT) / iT * 100) : 0) + "%")
+          ),
+          h("div", { style: { height:8, background:"rgba(139,117,85,0.1)", borderRadius:4, overflow:"hidden" } },
+            h("div", { style: { height:"100%", background:"linear-gradient(90deg,#2d6a4f,#52b788)", borderRadius:4, transition:"width 0.4s", width: Math.min(100, iT > 0 ? (dT + trT + lT + spT) / iT * 100 : 0) + "%" } })
+          )
+        )
+      ),
+
+      h("div", { style: S.card },
+        h("h3", { style: { margin:"0 0 12px", fontSize:"1rem", color:"#5c4a32" } }, "📝 メモ"),
+        h("textarea", { style: S.memo, placeholder: "今月の振り返りやメモをここに...", value: mD.memo || "", onChange: function(ev) { upd(function(p) { return Object.assign({}, p, { memo: ev.target.value }); }); } })
+      )
+    )
+  ),
+
+  h("footer", { style: { position:"relative", zIndex:1, textAlign:"center", padding:"24px 20px" } },
+    h("p", { style: { fontSize:"0.7rem", color:"#b8a898" } }, "家計ノート — データは自動保存されます")
+  )
+);
+```
+
+}
+
+ReactDOM.render(h(App), document.getElementById(“root”));
+})();
 </script>
 
 </body>
